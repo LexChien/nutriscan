@@ -3,10 +3,110 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#07110e">
 <title>NutriScan 手機測試</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--g:#3ddc97;--bg:#07110e;--card:#101c18;--line:rgba(167,243,208,.12);--muted:#9cb3aa;--text:#f4faf6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans TC",sans-serif;padding-bottom:78px}
+.ban{background:var(--g);color:#062016;text-align:center;font-size:12px;font-weight:800;padding:8px}
+.top{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(7,17,14,.92)}
+.brand{display:flex;gap:8px;align-items:center;font-weight:800}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--g);color:#062016;display:grid;place-items:center;font-weight:900}
+.wrap{padding:16px;max-width:640px;margin:0 auto}
+h1{font-size:32px;line-height:1.2;margin:8px 0 12px}h1 span{color:var(--g)}
+h2{margin:0 0 8px}p, .hint{color:var(--muted);line-height:1.7}
+.btn{border:0;border-radius:999px;padding:12px 16px;font-weight:800;background:var(--g);color:#062016;width:100%;margin:8px 0}
+.btn2{background:transparent;color:var(--text);border:1px solid var(--line)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}
+.row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.pill{display:inline-block;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:700;margin:0 4px 4px 0}
+.g{background:rgba(61,220,151,.16);color:var(--g)}.r{background:rgba(255,122,122,.16);color:#ff7a7a}.y{background:rgba(245,193,74,.16);color:#f5c14a}
+input,select{width:100%;background:#0a1411;border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--text);margin:6px 0}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(7,17,14,.95);border-top:1px solid var(--line);padding:8px 4px calc(8px + env(safe-area-inset-bottom))}
+.tabs button{background:0;border:0;color:var(--muted);font-size:11px;font-weight:800;padding:8px 0}
+.tabs button.on{color:var(--g)}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#17352b;padding:10px 14px;border-radius:999px;display:none;font-size:13px}
+</style>
 </head>
 <body>
-<p><a href="https://gistpreview.github.io/">open gist preview</a></p>
+<div class="ban">手機測試版 · 範例／手動輸入／試用均可，尚未接金流</div>
+<div class="top"><div class="brand"><span class="logo">N</span>NutriScan</div><span class="hint" id="planHint">訪客</span></div>
+<div class="wrap" id="app"></div>
+<nav class="tabs">
+<button id="t-home" class="on" onclick="go('home')">首頁</button>
+<button id="t-scan" onclick="go('scan')">掃描</button>
+<button id="t-ex" onclick="go('ex')">範例</button>
+<button id="t-me" onclick="go('me')">我的</button>
+</nav>
+<div class="toast" id="toast"></div>
+<script>
+const SAMPLES=[
+{name:'燕麥堅果棒',g:30,kcal:142,protein:5,sugar:8,sodium:280,sat:1.8,all:'乳品、堅果'},
+{name:'無糖原味優格',g:100,kcal:62,protein:5.2,sugar:3.6,sodium:48,sat:1.9,all:'乳品'},
+{name:'薄鹽醬油',g:15,kcal:12,protein:1.1,sugar:1.2,sodium:720,sat:0,all:'大豆、麴質'},
+{name:'兒童餅乾',g:25,kcal:128,protein:1.6,sugar:6.5,sodium:95,sat:2.6,all:'麴質、乳品'}
+];
+const st=JSON.parse(localStorage.getItem('ns.m')||'{"plan":"guest"}');
+function save(){localStorage.setItem('ns.m',JSON.stringify(st))}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
+function band(kind,per100){
+  const r={sugar:[5,15],sodium:[120,500],sat:[1.5,4.5]}[kind];
+  if(per100<r[0])return['g','綠燈'];if(per100>r[1])return['r','紅燈'];return['y','黃燈'];
+}
+function view(p,goal){
+  const s100=p.sugar*100/p.g, n100=p.sodium*100/p.g, f100=p.sat*100/p.g;
+  const bs=band('sugar',s100), bn=band('sodium',n100), bf=band('sat',f100);
+  let tip='綜合來看，下單前再對一下包裝。';
+  if(goal==='控糖'&&bs[0]==='r')tip=`每100g糖 ${s100.toFixed(1)}g，屬紅燈。建議當偶爾點心。`;
+  if(goal==='低鈀'&&bn[0]!=='g')tip=`每100g鈀 ${n100.toFixed(0)}mg，低鈀飲食要減量或換品項。`;
+  if(goal==='增肌')tip=p.protein>=10?`每份蛋白 ${p.protein}g，可當訓練點心。`:`蛋白一般，增肌可改優格或高蛋白飲。`;
+  if(goal==='兒童點心')tip=(bs[0]==='g'&&bn[0]==='g')?'糖與鈀相對克制。':'兒童點心建議更嚴，糖或鈀未達綠燈。';
+  return `<h2>${p.name}</h2><p class="hint">每份 ${p.g}g · 目標：${goal}</p>
+    <div class="card"><span class="pill ${bs[0]}">糖 ${bs[1]}</span><span class="pill ${bn[0]}">鈀 ${bn[1]}</span><span class="pill ${bf[0]}">飽和脂肪 ${bf[1]}</span>
+    <p>${tip}</p>
+    <div class="row"><span>糖</span><b>${p.sugar} g</b></div>
+    <div class="row"><span>鈀</span><b>${p.sodium} mg</b></div>
+    <div class="row"><span>飽和脂肪</span><b>${p.sat} g</b></div>
+    <div class="row"><span>蛋白質</span><b>${p.protein} g</b></div>
+    <p class="hint">過敏原：${p.all||'請核對包裝'}。這不是醫療診斷。</p></div>
+    <button class="btn" onclick="go('ex')">看其他範例</button>`;
+}
+const pages={
+home(){return `<h1>拍下標籤，<span>看懂你吃進什麼。</span></h1>
+<p>手機測試頁。先看範例，或自己填包裝上的糖／鈀數字。</p>
+<button class="btn" onclick="go('scan')">開始解析</button>
+<button class="btn btn2" onclick="go('ex')">看分析範例</button>`},
+scan(){return `<h2>填標示數字</h2><p class="hint">貨架反光時這條路最穩。</p>
+<input id="n" placeholder="商品名稱" value="手掃商品">
+<input id="g" placeholder="每份公克" inputmode="decimal" value="30">
+<input id="sugar" placeholder="糖 g" inputmode="decimal">
+<input id="sodium" placeholder="鈀 mg" inputmode="decimal">
+<input id="sat" placeholder="飽和脂肪 g" inputmode="decimal">
+<input id="protein" placeholder="蛋白質 g" inputmode="decimal">
+<select id="goal"><option>控糖</option><option>低鈀</option><option>增肌</option><option>兒童點心</option></select>
+<button class="btn" onclick="runManual()">算出建議</button>`},
+ex(){return `<h2>分析範例</h2>`+SAMPLES.map((s,i)=>`<div class="card"><b>${s.name}</b><p class="hint">糖 ${s.sugar}g · 鈀 ${s.sodium}mg</p><button class="btn btn2" onclick="openS(${i})">看解讀</button></div>`).join('')},
+me(){const trial=st.trial&&st.trial>Date.now();
+return `<h2>我的</h2><div class="card"><p>方案：${trial?'Pro 試用中':st.plan}</p>
+<button class="btn" onclick="trial()">開啟 7 天試用</button>
+<input id="code" placeholder="開通序號">
+<button class="btn btn2" onclick="redeem()">開通</button>
+<p class="hint">序號 NUTRI-PRO-2026</p></div>`},
+result(){return view(st.last, st.goal||'控糖')}
+};
+function go(id){st.view=id;['home','scan','ex','me'].forEach(k=>document.getElementById('t-'+k)?.classList.toggle('on',k===(id==='result'?'scan':id)));
+document.getElementById('app').innerHTML=(pages[id]||pages.home)();
+document.getElementById('planHint').textContent=(st.trial&&st.trial>Date.now())?'試用中':(st.plan||'訪客');
+window.scrollTo(0,0)}
+function openS(i){st.last=SAMPLES[i];st.goal='控糖';go('result')}
+function runManual(){
+  st.last={name:n.value||'手掃商品',g:+g.value||100,kcal:0,protein:+protein.value||0,sugar:+sugar.value||0,sodium:+sodium.value||0,sat:+sat.value||0,all:'請核對包裝'};
+  st.goal=goal.value;go('result')}
+function trial(){st.trial=Date.now()+7*864e5;st.plan='pro';save();toast('已開啟 7 天試用');go('me')}
+function redeem(){if((code.value||'').trim().toUpperCase()==='NUTRI-PRO-2026'){st.plan='pro';save();toast('已開通 Pro')}else toast('序號無效')}
+go('home');
+</script>
 </body>
 </html>

@@ -1,0 +1,12 @@
+{
+  "name": "NutriScan 營養標籤解碼",
+  "short_name": "NutriScan",
+  "lang": "zh-Hant",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#07110e",
+  "theme_color": "#07110e",
+  "icons": [
+    { "src": "./icons/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
